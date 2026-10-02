@@ -1,3 +1,23 @@
+import type { ApiError, ErrorResponse } from "@/types/api";
+import type {
+  Product,
+  ProductDetail,
+  ProductListResponse,
+  ProductPayload,
+  ProductOrder,
+} from "@/types/product";
+
+type ImageUploadResponse = {
+  url: string;
+};
+
+type GetProductsParams = {
+  page?: number;
+  pageSize?: number;
+  orderBy?: ProductOrder;
+  keyword?: string;
+};
+
 const BASE_URL = "https://panda-market-api.vercel.app";
 
 export async function getProducts({
@@ -5,7 +25,7 @@ export async function getProducts({
   pageSize = 10,
   orderBy = "recent",
   keyword = "",
-}) {
+}: GetProductsParams): Promise<ProductListResponse> {
   const params = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
@@ -22,10 +42,13 @@ export async function getProducts({
     throw new Error("상품 목록을 불러오지 못했습니다.");
   }
 
-  return response.json();
+  return (await response.json()) as ProductListResponse;
 }
 
-export async function createProduct(productData, accessToken) {
+export async function createProduct(
+  productData: ProductPayload,
+  accessToken: string,
+): Promise<Product> {
   const response = await fetch(`${BASE_URL}/products`, {
     method: "POST",
     headers: {
@@ -35,19 +58,25 @@ export async function createProduct(productData, accessToken) {
     body: JSON.stringify(productData),
   });
 
-  const data = await response.json();
+  const data = (await response.json()) as Product | ErrorResponse;
 
   if (!response.ok) {
-    const error = new Error(data.message || "상품을 등록하지 못했습니다.");
+    const error = new Error(
+      (data as ErrorResponse).message || "상품을 등록하지 못했습니다.",
+    ) as ApiError;
 
     error.status = response.status;
     throw error;
   }
 
-  return data;
+  return data as Product;
 }
 
-export async function updateProduct(productId, productData, accessToken) {
+export async function updateProduct(
+  productId: string,
+  productData: ProductPayload,
+  accessToken: string,
+): Promise<Product> {
   const response = await fetch(`${BASE_URL}/products/${productId}`, {
     method: "PATCH",
     headers: {
@@ -57,19 +86,24 @@ export async function updateProduct(productId, productData, accessToken) {
     body: JSON.stringify(productData),
   });
 
-  const data = await response.json();
+  const data = (await response.json()) as Product | ErrorResponse;
 
   if (!response.ok) {
-    const error = new Error(data.message || "상품을 수정하지 못했습니다.");
+    const error = new Error(
+      (data as ErrorResponse).message || "상품을 수정하지 못했습니다.",
+    ) as ApiError;
 
     error.status = response.status;
     throw error;
   }
 
-  return data;
+  return data as Product;
 }
 
-export async function getProductDetail(productId, accessToken) {
+export async function getProductDetail(
+  productId: string,
+  accessToken: string,
+): Promise<ProductDetail> {
   const response = await fetch(`${BASE_URL}/products/${productId}`, {
     method: "GET",
     headers: {
@@ -77,19 +111,24 @@ export async function getProductDetail(productId, accessToken) {
     },
   });
 
-  const data = await response.json();
+  const data = (await response.json()) as ProductDetail | ErrorResponse;
 
   if (!response.ok) {
-    const error = new Error(data.message || "상품 정보를 불러오지 못했습니다.");
+    const error = new Error(
+      (data as ErrorResponse).message || "상품 정보를 불러오지 못했습니다.",
+    ) as ApiError;
 
     error.status = response.status;
     throw error;
   }
 
-  return data;
+  return data as ProductDetail;
 }
 
-export async function uploadProductImage(imageFile, accessToken) {
+export async function uploadProductImage(
+  imageFile: File,
+  accessToken: string,
+): Promise<string> {
   const extension = imageFile.name.split(".").pop();
   const safeFileName = `product-image-${Date.now()}.${extension}`;
   const renamedImageFile = new File([imageFile], safeFileName, {
@@ -108,19 +147,24 @@ export async function uploadProductImage(imageFile, accessToken) {
     body: formData,
   });
 
-  const data = await response.json();
+  const data = (await response.json()) as ImageUploadResponse | ErrorResponse;
 
   if (!response.ok) {
-    const error = new Error(data.message || "이미지를 업로드하지 못했습니다.");
+    const error = new Error(
+      (data as ErrorResponse).message || "이미지를 업로드하지 못했습니다.",
+    ) as ApiError;
 
     error.status = response.status;
     throw error;
   }
 
-  return data.url;
+  return (data as ImageUploadResponse).url;
 }
 
-export async function addProductFavorite(productId, accessToken) {
+export async function addProductFavorite(
+  productId: string,
+  accessToken: string,
+): Promise<void> {
   const response = await fetch(`${BASE_URL}/products/${productId}/favorite`, {
     method: "POST",
     headers: {
@@ -128,19 +172,22 @@ export async function addProductFavorite(productId, accessToken) {
     },
   });
 
-  const data = await response.json();
-
   if (!response.ok) {
-    const error = new Error(data.message || "좋아요를 추가하지 못했습니다.");
+    const data = (await response.json()) as ErrorResponse;
+
+    const error = new Error(
+      data.message || "좋아요를 추가하지 못했습니다.",
+    ) as ApiError;
 
     error.status = response.status;
     throw error;
   }
-
-  return data;
 }
 
-export async function removeProductFavorite(productId, accessToken) {
+export async function removeProductFavorite(
+  productId: string,
+  accessToken: string,
+): Promise<void> {
   const response = await fetch(`${BASE_URL}/products/${productId}/favorite`, {
     method: "DELETE",
     headers: {
@@ -148,19 +195,22 @@ export async function removeProductFavorite(productId, accessToken) {
     },
   });
 
-  const data = await response.json();
-
   if (!response.ok) {
-    const error = new Error(data.message || "좋아요를 취소하지 못했습니다.");
+    const data = (await response.json()) as ErrorResponse;
+
+    const error = new Error(
+      data.message || "좋아요를 취소하지 못했습니다.",
+    ) as ApiError;
 
     error.status = response.status;
     throw error;
   }
-
-  return data;
 }
 
-export async function deleteProduct(productId, accessToken) {
+export async function deleteProduct(
+  productId: string,
+  accessToken: string,
+): Promise<void> {
   const response = await fetch(`${BASE_URL}/products/${productId}`, {
     method: "DELETE",
     headers: {
@@ -169,8 +219,10 @@ export async function deleteProduct(productId, accessToken) {
   });
 
   if (!response.ok) {
-    const data = await response.json();
-    const error = new Error(data.message || "상품을 삭제하지 못했습니다.");
+    const data = (await response.json()) as ErrorResponse;
+    const error = new Error(
+      data.message || "상품을 삭제하지 못했습니다.",
+    ) as ApiError;
 
     error.status = response.status;
     throw error;
