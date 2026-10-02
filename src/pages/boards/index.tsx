@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import type {
+  ArticleListResponse,
+  ArticleSort,
+  ArticleSummary,
+} from "@/types/article";
 import styles from "./BoardList.module.css";
 import Link from "next/link";
 import Image from "next/image";
@@ -7,10 +12,10 @@ import BoardListItem from "@/components/boards/BoardListItem";
 import getNickname from "@/lib/getNickname";
 
 export default function BoardListPage() {
-  const [bestArticles, setBestArticles] = useState([]);
-  const [articles, setArticles] = useState([]);
+  const [bestArticles, setBestArticles] = useState<ArticleSummary[]>([]);
+  const [articles, setArticles] = useState<ArticleSummary[]>([]);
   const [keyword, setKeyword] = useState("");
-  const [sort, setSort] = useState("recent");
+  const [sort, setSort] = useState<ArticleSort>("recent");
 
   useEffect(() => {
     async function getBestArticles() {
@@ -23,7 +28,7 @@ export default function BoardListPage() {
           throw new Error("베스트 게시글을 불러오지 못했습니다.");
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as ArticleListResponse;
         setBestArticles(data.list);
       } catch (error) {
         console.error(error);
@@ -44,7 +49,7 @@ export default function BoardListPage() {
           throw new Error("게시글을 불러오지 못했습니다.");
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as ArticleListResponse;
         setArticles(data.list);
       } catch (error) {
         console.error(error);
@@ -104,7 +109,13 @@ export default function BoardListPage() {
           <select
             className={styles.sortSelect}
             value={sort}
-            onChange={(event) => setSort(event.target.value)}
+            onChange={(event) => {
+              const nextSort = event.currentTarget.value;
+
+              if (nextSort === "recent" || nextSort === "oldest") {
+                setSort(nextSort);
+              }
+            }}
           >
             <option value="recent">최신순</option>
             <option value="oldest">오래된순</option>

@@ -2,7 +2,19 @@ import Image from "next/image";
 import Link from "next/link";
 import styles from "./BoardListItem.module.css";
 
-export default function BoardListItem({ id, title, nickname, createdAt }) {
+type BoardListItemProps = {
+  id: string;
+  title: string;
+  nickname: string;
+  createdAt: string;
+};
+
+export default function BoardListItem({
+  id,
+  title,
+  nickname,
+  createdAt,
+}: BoardListItemProps) {
   return (
     <Link href={`/boards/${id}`} className={styles.itemLink}>
       <article className={styles.item}>

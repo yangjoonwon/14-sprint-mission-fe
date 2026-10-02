@@ -1,9 +1,22 @@
 import { useState } from "react";
+import type { SubmitEvent } from "react";
 import Image from "next/image";
+import type { ErrorResponse } from "@/types/api";
+import type { BaseComment } from "@/types/comment";
 import styles from "./CommentItem.module.css";
 import formatTimeAgo from "@/lib/formatTimeAgo";
 
-export default function CommentItem({ comment, onUpdate, onDelete }) {
+type CommentItemProps = {
+  comment: BaseComment;
+  onUpdate: (comment: BaseComment) => void;
+  onDelete: (commentId: string) => void;
+};
+
+export default function CommentItem({
+  comment,
+  onUpdate,
+  onDelete,
+}: CommentItemProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(comment.content);
@@ -21,7 +34,7 @@ export default function CommentItem({ comment, onUpdate, onDelete }) {
     setIsEditing(false);
   }
 
-  async function handleUpdateComment(event) {
+  async function handleUpdateComment(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const trimmedContent = editedContent.trim();
@@ -43,17 +56,25 @@ export default function CommentItem({ comment, onUpdate, onDelete }) {
         }),
       });
 
-      const updatedComment = await response.json();
+      const data = (await response.json()) as BaseComment | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(updatedComment.message);
+        throw new Error(
+          (data as ErrorResponse).message || "댓글을 수정하지 못했습니다.",
+        );
       }
 
-      onUpdate(updatedComment);
+      onUpdate(data as BaseComment);
       setIsEditing(false);
     } catch (error) {
       console.error(error);
-      alert(error.message);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "댓글 수정 중 오류가 발생했습니다.";
+
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -72,14 +93,20 @@ export default function CommentItem({ comment, onUpdate, onDelete }) {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message);
+        const data = (await response.json()) as ErrorResponse;
+        throw new Error(data.message || "댓글을 삭제하지 못했습니다.");
       }
 
       onDelete(comment.id);
     } catch (error) {
       console.error(error);
-      alert(error.message);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "댓글 삭제 중 오류가 발생했습니다.";
+
+      alert(message);
     } finally {
       setIsDeleting(false);
     }

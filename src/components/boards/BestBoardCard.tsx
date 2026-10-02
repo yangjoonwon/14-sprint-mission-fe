@@ -2,7 +2,19 @@ import Image from "next/image";
 import Link from "next/link";
 import styles from "./BestBoardCard.module.css";
 
-export default function BestBoardCard({ id, title, nickname, createdAt }) {
+type BestBoardCardProps = {
+  id: string;
+  title: string;
+  nickname: string;
+  createdAt: string;
+};
+
+export default function BestBoardCard({
+  id,
+  title,
+  nickname,
+  createdAt,
+}: BestBoardCardProps) {
   return (
     <Link href={`/boards/${id}`} className={styles.cardLink}>
       <article className={styles.card}>
