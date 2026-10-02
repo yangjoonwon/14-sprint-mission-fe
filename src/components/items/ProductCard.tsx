@@ -1,32 +1,32 @@
 import Link from "next/link";
 import styles from "./ProductCard.module.css";
+import type { SyntheticEvent } from "react";
+import type { Product } from "@/types/product";
+
+type ProductCardProps = {
+  product: Product;
+  isBest?: boolean;
+};
 
 const DEFAULT_IMAGE = "/images/default_product.png";
 
 export default function ProductCard({
   product,
   isBest = false,
-}) {
+}: ProductCardProps) {
   const imageUrl = product.images?.[0] || DEFAULT_IMAGE;
   const formattedPrice = Number(product.price).toLocaleString();
 
-  const cardClassName = isBest
-    ? styles.bestProductCard
-    : styles.productCard;
+  const cardClassName = isBest ? styles.bestProductCard : styles.productCard;
 
-  const imageClassName = isBest
-    ? styles.bestProductImage
-    : styles.productImage;
+  const imageClassName = isBest ? styles.bestProductImage : styles.productImage;
 
-  function handleImageError(event) {
+  function handleImageError(event: SyntheticEvent<HTMLImageElement>) {
     event.currentTarget.src = DEFAULT_IMAGE;
   }
 
   return (
-    <Link
-      href={`/items/${product.id}`}
-      className={cardClassName}
-    >
+    <Link href={`/items/${product.id}`} className={cardClassName}>
       <img
         className={imageClassName}
         src={imageUrl}
@@ -37,9 +37,7 @@ export default function ProductCard({
       <div className={styles.productInfo}>
         <p className={styles.productName}>{product.name}</p>
 
-        <p className={styles.productPrice}>
-          {formattedPrice}원
-        </p>
+        <p className={styles.productPrice}>{formattedPrice}원</p>
 
         <p className={styles.favoriteCount}>
           <img

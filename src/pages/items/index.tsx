@@ -1,4 +1,6 @@
 import { useState } from "react";
+import type { ChangeEvent } from "react";
+import type { ProductOrder } from "@/types/product";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getProducts } from "@/api/productsApi";
@@ -8,19 +10,13 @@ import styles from "./Items.module.css";
 
 export default function ItemsPage() {
   const [searchText, setSearchText] = useState("");
-  const [orderBy, setOrderBy] = useState("recent");
+  const [orderBy, setOrderBy] = useState<ProductOrder>("recent");
   const [currentPage, setCurrentPage] = useState(1);
 
   const pageSize = 10;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: [
-      "products",
-      currentPage,
-      pageSize,
-      orderBy,
-      searchText,
-    ],
+    queryKey: ["products", currentPage, pageSize, orderBy, searchText],
     queryFn: () =>
       getProducts({
         page: currentPage,
@@ -37,34 +33,33 @@ export default function ItemsPage() {
   const pageGroupSize = 5;
 
   const startPage =
-    Math.floor((currentPage - 1) / pageGroupSize) *
-      pageGroupSize +
-    1;
+    Math.floor((currentPage - 1) / pageGroupSize) * pageGroupSize + 1;
 
-  const endPage = Math.min(
-    startPage + pageGroupSize - 1,
-    totalPages,
-  );
+  const endPage = Math.min(startPage + pageGroupSize - 1, totalPages);
 
   const pageNumbers = Array.from(
     { length: Math.max(endPage - startPage + 1, 0) },
     (_, index) => startPage + index,
   );
 
-  function handleSearchChange(event) {
-    setSearchText(event.target.value);
+  function handleSearchChange(event: ChangeEvent<HTMLInputElement>) {
+    setSearchText(event.currentTarget.value);
     setCurrentPage(1);
   }
 
-  function handleOrderChange(event) {
-    setOrderBy(event.target.value);
+  function handleOrderChange(event: ChangeEvent<HTMLSelectElement>) {
+    const selectedOrder = event.currentTarget.value;
+
+    if (selectedOrder !== "recent" && selectedOrder !== "favorite") {
+      return;
+    }
+
+    setOrderBy(selectedOrder);
     setCurrentPage(1);
   }
 
   function handlePreviousPageGroup() {
-    setCurrentPage(
-      Math.max(startPage - pageGroupSize, 1),
-    );
+    setCurrentPage(Math.max(startPage - pageGroupSize, 1));
   }
 
   function handleNextPageGroup() {
@@ -95,10 +90,7 @@ export default function ItemsPage() {
               />
             </div>
 
-            <Link
-              className={styles.registerButton}
-              href="/items/new"
-            >
+            <Link className={styles.registerButton} href="/items/new">
               상품 등록하기
             </Link>
 
@@ -114,25 +106,18 @@ export default function ItemsPage() {
         </div>
 
         {isLoading && (
-          <p className={styles.message}>
-            상품을 불러오는 중입니다.
-          </p>
+          <p className={styles.message}>상품을 불러오는 중입니다.</p>
         )}
 
         {isError && (
-          <p className={styles.message}>
-            상품 목록을 불러오지 못했습니다.
-          </p>
+          <p className={styles.message}>상품 목록을 불러오지 못했습니다.</p>
         )}
 
         {!isLoading && !isError && (
           <>
             <div className={styles.productGrid}>
               {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                />
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
 
