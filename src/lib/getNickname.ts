@@ -6,7 +6,7 @@ const nicknames = [
   "점심은 언제먹지",
 ];
 
-export default function getNickname(id = "") {
+export default function getNickname(id: string = "") {
   const nicknameIndex = id ? id.charCodeAt(0) % nicknames.length : 0;
 
   return nicknames[nicknameIndex];

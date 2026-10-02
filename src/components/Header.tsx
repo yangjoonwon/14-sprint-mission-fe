@@ -12,7 +12,7 @@ export default function Header() {
   const isBoardsPage = router.pathname.startsWith("/boards");
   const isItemsPage = router.pathname.startsWith("/items");
 
-  const [accessToken, setAccessToken] = useState(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isTokenChecked, setIsTokenChecked] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
@@ -29,13 +29,13 @@ export default function Header() {
     isLoading: isUserLoading,
   } = useQuery({
     queryKey: ["currentUser"],
-    queryFn: () => getCurrentUser(accessToken),
+    queryFn: () => getCurrentUser(accessToken!),
     enabled: isTokenChecked && Boolean(accessToken),
     retry: false,
   });
 
   useEffect(() => {
-    if (userError && userError.status === 401) {
+    if (userError && "status" in userError && userError.status === 401) {
       localStorage.removeItem("accessToken");
       setAccessToken(null);
     }

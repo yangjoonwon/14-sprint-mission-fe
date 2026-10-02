@@ -1,4 +1,4 @@
-export default function formatTimeAgo(createdAt) {
+export default function formatTimeAgo(createdAt: string) {
   const createdTime = new Date(createdAt).getTime();
   const currentTime = Date.now();
 
