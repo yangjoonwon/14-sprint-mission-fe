@@ -8,6 +8,8 @@ import { getCurrentUser } from "@/api/usersApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { useEffect, useState, useRef } from "react";
+import type { SyntheticEvent } from "react";
+import type { ProductComment } from "@/types/comment";
 import {
   createProductComment,
   getProductComments,
@@ -17,22 +19,34 @@ import {
 import Link from "next/link";
 import styles from "./ItemDetail.module.css";
 
+type UpdateCommentVariables = {
+  commentId: string;
+  content: string;
+};
+
+function isUnauthorizedError(error: unknown) {
+  return error instanceof Error && "status" in error && error.status === 401;
+}
+
 export default function ItemDetailPage() {
   const router = useRouter();
-  const { id } = router.query;
+  const productId =
+    typeof router.query.id === "string" ? router.query.id : null;
   const DEFAULT_IMAGE = "/images/default_product.png";
   const queryClient = useQueryClient();
-  const tagWidthRef = useRef(null);
+  const tagWidthRef = useRef<HTMLDivElement | null>(null);
 
-  const [accessToken, setAccessToken] = useState(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isProductDeleteModalOpen, setIsProductDeleteModalOpen] =
     useState(false);
-  const [visibleTagCount, setVisibleTagCount] = useState(null);
+  const [visibleTagCount, setVisibleTagCount] = useState<number | null>(null);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [commentContent, setCommentContent] = useState("");
-  const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
+  const [openCommentMenuId, setOpenCommentMenuId] = useState<string | null>(
+    null,
+  );
   const [isProductMenuOpen, setIsProductMenuOpen] = useState(false);
-  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
 
   const MAX_VISIBLE_TAG_ROWS = 2;
@@ -55,9 +69,9 @@ export default function ItemDetailPage() {
     isError,
     error,
   } = useQuery({
-    queryKey: ["product", id],
-    queryFn: () => getProductDetail(id, accessToken),
-    enabled: router.isReady && Boolean(id) && Boolean(accessToken),
+    queryKey: ["product", productId],
+    queryFn: () => getProductDetail(productId!, accessToken!),
+    enabled: router.isReady && Boolean(productId) && Boolean(accessToken),
     retry: false,
   });
 
@@ -67,16 +81,22 @@ export default function ItemDetailPage() {
     }
 
     function calculateVisibleTagCount() {
-      const containerWidth = tagWidthRef.current.clientWidth;
+      const container = tagWidthRef.current;
+
+      if (!container) {
+        return;
+      }
+
+      const containerWidth = container.clientWidth;
 
       const tagElements =
-        tagWidthRef.current.querySelectorAll("[data-tag-width]");
+        container.querySelectorAll<HTMLElement>("[data-tag-width]");
 
       const tagWidths = Array.from(tagElements).map(
         (tagElement) => tagElement.offsetWidth,
       );
 
-      function getRowCount(widths) {
+      function getRowCount(widths: number[]) {
         let rowCount = 1;
         let currentRowWidth = 0;
 
@@ -128,40 +148,40 @@ export default function ItemDetailPage() {
     isLoading: isCommentsLoading,
     isError: isCommentsError,
   } = useQuery({
-    queryKey: ["productComments", id],
+    queryKey: ["productComments", productId],
     queryFn: () =>
       getProductComments({
-        productId: id,
+        productId: productId!,
         limit: 10,
       }),
-    enabled: router.isReady && Boolean(id) && Boolean(accessToken),
+    enabled: router.isReady && Boolean(productId) && Boolean(accessToken),
   });
 
   const { data: currentUser } = useQuery({
     queryKey: ["currentUser"],
-    queryFn: () => getCurrentUser(accessToken),
+    queryFn: () => getCurrentUser(accessToken!),
     enabled: Boolean(accessToken),
     retry: false,
   });
 
   const createCommentMutation = useMutation({
-    mutationFn: (content) =>
+    mutationFn: (content: string) =>
       createProductComment({
-        productId: id,
+        productId: productId!,
         content,
-        accessToken,
+        accessToken: accessToken!,
       }),
 
     onSuccess: () => {
       setCommentContent("");
 
       queryClient.invalidateQueries({
-        queryKey: ["productComments", id],
+        queryKey: ["productComments", productId],
       });
     },
 
     onError: (mutationError) => {
-      if (mutationError.status === 401) {
+      if (isUnauthorizedError(mutationError)) {
         localStorage.removeItem("accessToken");
         router.replace("/signin");
       }
@@ -169,11 +189,11 @@ export default function ItemDetailPage() {
   });
 
   const updateCommentMutation = useMutation({
-    mutationFn: ({ commentId, content }) =>
+    mutationFn: ({ commentId, content }: UpdateCommentVariables) =>
       updateComment({
         commentId,
         content,
-        accessToken,
+        accessToken: accessToken!,
       }),
 
     onSuccess: () => {
@@ -181,12 +201,12 @@ export default function ItemDetailPage() {
       setEditContent("");
 
       queryClient.invalidateQueries({
-        queryKey: ["productComments", id],
+        queryKey: ["productComments", productId],
       });
     },
 
     onError: (mutationError) => {
-      if (mutationError.status === 401) {
+      if (isUnauthorizedError(mutationError)) {
         localStorage.removeItem("accessToken");
         router.replace("/signin");
       }
@@ -194,7 +214,7 @@ export default function ItemDetailPage() {
   });
 
   const deleteProductMutation = useMutation({
-    mutationFn: (productId) => deleteProduct(productId, accessToken),
+    mutationFn: (productId: string) => deleteProduct(productId!, accessToken!),
 
     onSuccess: () => {
       setIsProductDeleteModalOpen(false);
@@ -207,7 +227,7 @@ export default function ItemDetailPage() {
     },
 
     onError: (mutationError) => {
-      if (mutationError.status === 401) {
+      if (isUnauthorizedError(mutationError)) {
         localStorage.removeItem("accessToken");
         router.replace("/signin");
       }
@@ -215,22 +235,22 @@ export default function ItemDetailPage() {
   });
 
   const deleteCommentMutation = useMutation({
-    mutationFn: (commentId) =>
+    mutationFn: (commentId: string) =>
       deleteComment({
         commentId,
-        accessToken,
+        accessToken: accessToken!,
       }),
 
     onSuccess: () => {
       setOpenCommentMenuId(null);
 
       queryClient.invalidateQueries({
-        queryKey: ["productComments", id],
+        queryKey: ["productComments", productId],
       });
     },
 
     onError: (mutationError) => {
-      if (mutationError.status === 401) {
+      if (isUnauthorizedError(mutationError)) {
         localStorage.removeItem("accessToken");
         router.replace("/signin");
       }
@@ -239,21 +259,25 @@ export default function ItemDetailPage() {
 
   const favoriteMutation = useMutation({
     mutationFn: () => {
-      if (product.isFavorite) {
-        return removeProductFavorite(id, accessToken);
+      if (!product) {
+        throw new Error("상품 정보가 없습니다.");
       }
 
-      return addProductFavorite(id, accessToken);
+      if (product.isFavorite) {
+        return removeProductFavorite(productId!, accessToken!);
+      }
+
+      return addProductFavorite(productId!, accessToken!);
     },
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["product", id],
+        queryKey: ["product", productId],
       });
     },
 
     onError: (favoriteError) => {
-      if (favoriteError.status === 401) {
+      if (isUnauthorizedError(favoriteError)) {
         localStorage.removeItem("accessToken");
         router.replace("/signin");
       }
@@ -270,7 +294,7 @@ export default function ItemDetailPage() {
 
   const comments = commentsData?.list || [];
 
-  function handleImageError(event) {
+  function handleImageError(event: SyntheticEvent<HTMLImageElement>) {
     event.currentTarget.src = DEFAULT_IMAGE;
   }
 
@@ -310,7 +334,7 @@ export default function ItemDetailPage() {
     });
   }
 
-  function handleStartEdit(comment) {
+  function handleStartEdit(comment: ProductComment) {
     setEditingCommentId(comment.id);
     setEditContent(comment.content);
     setOpenCommentMenuId(null);
@@ -322,14 +346,14 @@ export default function ItemDetailPage() {
   }
 
   function handleConfirmProductDelete() {
-    if (deleteProductMutation.isPending) {
+    if (!productId || deleteProductMutation.isPending) {
       return;
     }
 
-    deleteProductMutation.mutate(id);
+    deleteProductMutation.mutate(productId);
   }
 
-  function handleDeleteComment(commentId) {
+  function handleDeleteComment(commentId: string) {
     if (deleteCommentMutation.isPending) {
       return;
     }
@@ -338,7 +362,7 @@ export default function ItemDetailPage() {
   }
 
   useEffect(() => {
-    if (error?.status === 401) {
+    if (isUnauthorizedError(error)) {
       localStorage.removeItem("accessToken");
       router.replace("/signin");
     }
@@ -393,7 +417,7 @@ export default function ItemDetailPage() {
                     <div className={styles.productMenu}>
                       <Link
                         className={styles.menuItem}
-                        href={`/items/${id}/edit`}
+                        href={`/items/${product.id}/edit`}
                       >
                         수정하기
                       </Link>
