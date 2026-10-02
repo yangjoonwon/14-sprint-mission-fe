@@ -1,11 +1,24 @@
 import { useState } from "react";
+import type { SubmitEvent } from "react";
+import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import CommentItem from "@/components/boards/CommentItem";
 import getNickname from "@/lib/getNickname";
+import type { ErrorResponse } from "@/types/api";
+import type { Article } from "@/types/article";
+import type { BaseComment } from "@/types/comment";
 import styles from "./BoardDetail.module.css";
 
-export default function BoardDetailPage({ initialArticle, initialComments }) {
+type BoardDetailPageProps = {
+  initialArticle: Article;
+  initialComments: BaseComment[];
+};
+
+export default function BoardDetailPage({
+  initialArticle,
+  initialComments,
+}: BoardDetailPageProps) {
   const router = useRouter();
 
   const article = initialArticle;
@@ -30,20 +43,26 @@ export default function BoardDetailPage({ initialArticle, initialComments }) {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message);
+        const data = (await response.json()) as ErrorResponse;
+        throw new Error(data.message || "게시글을 삭제하지 못했습니다.");
       }
 
       router.push("/boards");
     } catch (error) {
       console.error(error);
-      alert(error.message);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "게시글 삭제 중 오류가 발생했습니다.";
+
+      alert(message);
     } finally {
       setIsArticleDeleting(false);
     }
   }
 
-  async function handleCreateComment(event) {
+  async function handleCreateComment(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const trimmedContent = commentContent.trim();
@@ -65,24 +84,34 @@ export default function BoardDetailPage({ initialArticle, initialComments }) {
         }),
       });
 
-      const createdComment = await response.json();
+      const data = (await response.json()) as BaseComment | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(createdComment.message);
+        throw new Error(
+          (data as ErrorResponse).message || "댓글을 등록하지 못했습니다.",
+        );
       }
+
+      const createdComment = data as BaseComment;
 
       setComments((previousComments) => [createdComment, ...previousComments]);
 
       setCommentContent("");
     } catch (error) {
       console.error(error);
-      alert(error.message);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "댓글 등록 중 오류가 발생했습니다.";
+
+      alert(message);
     } finally {
       setIsCommentSubmitting(false);
     }
   }
 
-  function handleUpdateComment(updatedComment) {
+  function handleUpdateComment(updatedComment: BaseComment) {
     setComments((previousComments) =>
       previousComments.map((comment) =>
         comment.id === updatedComment.id ? updatedComment : comment,
@@ -90,7 +119,7 @@ export default function BoardDetailPage({ initialArticle, initialComments }) {
     );
   }
 
-  function handleDeleteComment(commentId) {
+  function handleDeleteComment(commentId: string) {
     setComments((previousComments) =>
       previousComments.filter((comment) => comment.id !== commentId),
     );
@@ -232,8 +261,16 @@ export default function BoardDetailPage({ initialArticle, initialComments }) {
   );
 }
 
-export async function getServerSideProps(context) {
-  const id = context.params.id;
+export const getServerSideProps: GetServerSideProps<
+  BoardDetailPageProps
+> = async (context) => {
+  const id = context.params?.id;
+
+  if (typeof id !== "string") {
+    return {
+      notFound: true,
+    };
+  }
 
   const serverUrl = `http://${context.req.headers.host}`;
 
@@ -250,7 +287,7 @@ export async function getServerSideProps(context) {
       throw new Error("게시글을 불러오지 못했습니다.");
     }
 
-    const article = await articleResponse.json();
+    const article = (await articleResponse.json()) as Article;
 
     const commentsResponse = await fetch(
       `${serverUrl}/api/articles/${id}/comments`,
@@ -260,7 +297,7 @@ export async function getServerSideProps(context) {
       throw new Error("댓글을 불러오지 못했습니다.");
     }
 
-    const comments = await commentsResponse.json();
+    const comments = (await commentsResponse.json()) as BaseComment[];
 
     return {
       props: {
@@ -278,4 +315,4 @@ export async function getServerSideProps(context) {
       },
     };
   }
-}
+};

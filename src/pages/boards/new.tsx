@@ -1,54 +1,27 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import type { SubmitEvent } from "react";
 import { useRouter } from "next/router";
-import styles from "../BoardForm.module.css";
+import type { Article } from "@/types/article";
+import styles from "./BoardForm.module.css";
 
-export default function BoardEditPage() {
-  const router = useRouter();
-  const { id } = router.query;
-
+export default function BoardCreatePage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!router.isReady) return;
-
-    async function getArticle() {
-      try {
-        const response = await fetch(`/api/articles/${id}`);
-        const article = await response.json();
-
-        if (!response.ok) {
-          throw new Error(article.message);
-        }
-
-        setTitle(article.title);
-        setContent(article.content);
-      } catch (error) {
-        console.error(error);
-        alert(error.message);
-        router.push("/boards");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    getArticle();
-  }, [router.isReady, id, router]);
-
-  async function handleSubmit(event) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!title.trim() || !content.trim() || isSubmitting) {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
+    setIsSubmitting(true);
 
-      const response = await fetch(`/api/articles/${id}`, {
-        method: "PATCH",
+    try {
+      const response = await fetch("/api/articles", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -58,37 +31,38 @@ export default function BoardEditPage() {
         }),
       });
 
-      const article = await response.json();
-
       if (!response.ok) {
-        throw new Error(article.message);
+        throw new Error("게시글 등록에 실패했습니다.");
       }
 
+      const article = (await response.json()) as Article;
       router.push(`/boards/${article.id}`);
     } catch (error) {
       console.error(error);
-      alert(error.message);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "게시글 등록 중 오류가 발생했습니다.";
+
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  if (isLoading) {
-    return <p>게시글을 불러오는 중입니다.</p>;
   }
 
   return (
     <div className={styles.page}>
       <form className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.formHeader}>
-          <h1 className={styles.pageTitle}>게시글 수정</h1>
+          <h1 className={styles.pageTitle}>게시글 쓰기</h1>
 
           <button
             className={styles.submitButton}
             type="submit"
             disabled={!title.trim() || !content.trim() || isSubmitting}
           >
-            {isSubmitting ? "수정 중" : "수정 완료"}
+            {isSubmitting ? "등록 중..." : "등록"}
           </button>
         </div>
 
