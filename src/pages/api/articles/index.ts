@@ -1,8 +1,28 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { Article as PrismaArticle, Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import type { ErrorResponse } from "@/types/api";
 
-export default async function handler(req, res) {
-  if (!["GET", "POST"].includes(req.method)) {
-    res.setHeader("Allow", ["GET", "POST"]);
+type ArticleSummaryResponse = Pick<
+  PrismaArticle,
+  "id" | "title" | "content" | "createdAt"
+>;
+type ArticleListApiResponse = {
+  list: ArticleSummaryResponse[];
+  totalCount: number;
+};
+type ArticlesApiResponse =
+  | PrismaArticle
+  | ArticleListApiResponse
+  | ErrorResponse;
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ArticlesApiResponse>,
+) {
+  const allowedMethods = ["GET", "POST"];
+  if (!req.method || !allowedMethods.includes(req.method)) {
+    res.setHeader("Allow", allowedMethods);
 
     return res.status(405).json({
       message: "허용되지 않은 메서드입니다.",
@@ -12,10 +32,10 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const title =
-        typeof req.body.title === "string" ? req.body.title.trim() : "";
+        typeof req.body?.title === "string" ? req.body.title.trim() : "";
 
       const content =
-        typeof req.body.content === "string" ? req.body.content.trim() : "";
+        typeof req.body?.content === "string" ? req.body.content.trim() : "";
 
       if (!title || !content) {
         return res.status(400).json({
@@ -42,14 +62,15 @@ export default async function handler(req, res) {
 
   try {
     const { offset, limit, keyword, sort } = req.query;
+    const searchKeyword = typeof keyword === "string" ? keyword : "";
 
     const offsetNum = Number(offset) || 0;
     const limitNum = Number(limit) || 10;
 
-    const where = keyword
+    const where: Prisma.ArticleWhereInput = searchKeyword
       ? {
           title: {
-            contains: keyword,
+            contains: searchKeyword,
             mode: "insensitive",
           },
         }

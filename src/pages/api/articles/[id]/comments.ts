@@ -1,9 +1,22 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { Comment } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import type { ErrorResponse } from "@/types/api";
 
-export default async function handler(req, res) {
+type ArticleComment = Pick<
+  Comment,
+  "id" | "content" | "createdAt" | "updatedAt"
+>;
+
+type ArticleCommentsApiResponse = ArticleComment[] | Comment | ErrorResponse;
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ArticleCommentsApiResponse>,
+) {
   const allowedMethods = ["GET", "POST"];
 
-  if (!allowedMethods.includes(req.method)) {
+  if (!req.method || !allowedMethods.includes(req.method)) {
     res.setHeader("Allow", allowedMethods);
     return res.status(405).json({
       message: "허용되지 않은 메서드입니다.",
@@ -11,6 +24,12 @@ export default async function handler(req, res) {
   }
 
   const { id } = req.query;
+
+  if (typeof id !== "string") {
+    return res.status(400).json({
+      message: "올바른 게시글 ID가 필요합니다.",
+    });
+  }
 
   try {
     const article = await prisma.article.findUnique({

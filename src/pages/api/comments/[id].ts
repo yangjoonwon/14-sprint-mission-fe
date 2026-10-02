@@ -1,9 +1,17 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { Comment } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import type { ErrorResponse } from "@/types/api";
 
-export default async function handler(req, res) {
+type CommentApiResponse = Comment | ErrorResponse;
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<CommentApiResponse>,
+) {
   const allowedMethods = ["PATCH", "DELETE"];
 
-  if (!allowedMethods.includes(req.method)) {
+  if (!req.method || !allowedMethods.includes(req.method)) {
     res.setHeader("Allow", allowedMethods);
 
     return res.status(405).json({
@@ -12,6 +20,12 @@ export default async function handler(req, res) {
   }
 
   const { id } = req.query;
+
+  if (typeof id !== "string") {
+    return res.status(400).json({
+      message: "올바른 댓글 ID가 필요합니다.",
+    });
+  }
 
   try {
     const existingComment = await prisma.comment.findUnique({
@@ -26,9 +40,7 @@ export default async function handler(req, res) {
 
     if (req.method === "PATCH") {
       const content =
-        typeof req.body?.content === "string"
-          ? req.body.content.trim()
-          : "";
+        typeof req.body?.content === "string" ? req.body.content.trim() : "";
 
       if (!content) {
         return res.status(400).json({
