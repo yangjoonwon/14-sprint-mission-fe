@@ -6,24 +6,37 @@ import {
   updateProduct,
   uploadProductImage,
 } from "@/api/productsApi";
+import type {
+  ChangeEvent,
+  KeyboardEvent,
+  MouseEvent,
+  SubmitEvent,
+} from "react";
+import type { ApiError } from "@/types/api";
+import type { Product } from "@/types/product";
 
 import styles from "../new/ProductRegistration.module.css";
+
+type SelectedIamge =
+  | { file: File; previewUrl: string; imageUrl: null }
+  | { file: null; previewUrl: string; imageUrl: string };
 
 export default function ProductEditPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { id } = router.query;
-  const [accessToken, setAccessToken] = useState(null);
+  const productId = typeof id === "string" ? id : "";
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagError, setTagError] = useState("");
   const [submitError, setSubmitError] = useState("");
 
-  const [selectedImages, setSelectedImages] = useState([]);
+  const [selectedImages, setSelectedImages] = useState<SelectedIamge[]>([]);
   const [imageError, setImageError] = useState("");
 
   const MAX_IMAGE_COUNT = 3;
@@ -47,9 +60,9 @@ export default function ProductEditPage() {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["product", id],
-    queryFn: () => getProductDetail(id, accessToken),
-    enabled: router.isReady && Boolean(id) && Boolean(accessToken),
+    queryKey: ["product", productId],
+    queryFn: () => getProductDetail(productId, accessToken!),
+    enabled: router.isReady && Boolean(productId) && Boolean(accessToken),
     retry: false,
   });
 
@@ -58,7 +71,7 @@ export default function ProductEditPage() {
       return;
     }
 
-    const existingImages = product.images.map((imageUrl) => ({
+    const existingImages: SelectedIamge[] = product.images.map((imageUrl) => ({
       file: null,
       previewUrl: imageUrl,
       imageUrl,
@@ -71,20 +84,20 @@ export default function ProductEditPage() {
     setTags(product.tags);
   }, [product]);
 
-  const updateProductMutation = useMutation({
+  const updateProductMutation = useMutation<Product, ApiError, void>({
     mutationFn: async () => {
       const imageUrls = [];
 
       for (const selectedImage of selectedImages) {
-        if (selectedImage.imageUrl) {
-          imageUrls.push(selectedImage.imageUrl);
-        } else {
+        if (selectedImage.file) {
           const uploadedImageUrl = await uploadProductImage(
             selectedImage.file,
-            accessToken,
+            accessToken!,
           );
 
           imageUrls.push(uploadedImageUrl);
+        } else {
+          imageUrls.push(selectedImage.imageUrl);
         }
       }
 
@@ -96,7 +109,7 @@ export default function ProductEditPage() {
         name: name.trim(),
       };
 
-      return updateProduct(id, productData, accessToken);
+      return updateProduct(productId, productData, accessToken!);
     },
 
     onSuccess: () => {
@@ -107,14 +120,14 @@ export default function ProductEditPage() {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["product", id],
+        queryKey: ["product", productId],
       });
 
       queryClient.invalidateQueries({
         queryKey: ["products"],
       });
 
-      router.push(`/items/${id}`);
+      router.push(`/items/${productId}`);
     },
 
     onError: (mutationError) => {
@@ -128,7 +141,7 @@ export default function ProductEditPage() {
     },
   });
 
-  function handleImageButtonClick(event) {
+  function handleImageButtonClick(event: MouseEvent<HTMLLabelElement>) {
     if (selectedImages.length >= MAX_IMAGE_COUNT) {
       event.preventDefault();
       setImageError("이미지는 최대 3개까지 등록할 수 있습니다.");
@@ -147,8 +160,8 @@ export default function ProductEditPage() {
     !Number.isInteger(Number(price)) ||
     tags.length === 0;
 
-  function handleImageChange(event) {
-    const selectedFiles = Array.from(event.target.files);
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(event.target.files ?? []);
     const availableImageCount = MAX_IMAGE_COUNT - selectedImages.length;
 
     const invalidTypeFile = selectedFiles.find(
@@ -157,7 +170,7 @@ export default function ProductEditPage() {
 
     if (invalidTypeFile) {
       setImageError("JPG, JPEG, PNG, Webp 이미지만 등록할 수 있습니다.");
-      event.target.value = "";
+      event.currentTarget.value = "";
       return;
     }
 
@@ -167,7 +180,7 @@ export default function ProductEditPage() {
 
     if (oversizedFile) {
       setImageError("이미지는 한 장당 최대 5MB까지 등록할 수 있습니다.");
-      event.target.value = "";
+      event.currentTarget.value = "";
       return;
     }
 
@@ -187,10 +200,10 @@ export default function ProductEditPage() {
       setImageError("");
     }
 
-    event.target.value = "";
+    event.currentTarget.value = "";
   }
 
-  function handleRemoveImage(removePreviewUrl) {
+  function handleRemoveImage(removePreviewUrl: string) {
     const removedImage = selectedImages.find(
       (image) => image.previewUrl === removePreviewUrl,
     );
@@ -205,15 +218,15 @@ export default function ProductEditPage() {
     setImageError("");
   }
 
-  function handlePriceChange(event) {
-    const onlyNumbers = event.target.value.replace(/[^0-9]/g, "");
+  function handlePriceChange(event: ChangeEvent<HTMLInputElement>) {
+    const onlyNumbers = event.currentTarget.value.replace(/[^0-9]/g, "");
 
     if (onlyNumbers === "" || Number(onlyNumbers) <= 2147483647) {
       setPrice(onlyNumbers);
     }
   }
 
-  function handleTagKeyDown(event) {
+  function handleTagKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.nativeEvent.isComposing) {
       return;
     }
@@ -245,12 +258,12 @@ export default function ProductEditPage() {
     setTagError("");
   }
 
-  function handleRemoveTag(removeTag) {
+  function handleRemoveTag(removeTag: string) {
     setTags((currentTags) => currentTags.filter((tag) => tag !== removeTag));
     setTagError("");
   }
 
-  function handleSubmit(event) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (isSubmitDisabled || updateProductMutation.isPending) {

@@ -1,21 +1,35 @@
+import type {
+  ChangeEvent,
+  KeyboardEvent,
+  MouseEvent,
+  SubmitEvent,
+} from "react";
+import type { ApiError } from "@/types/api";
+import type { Product } from "@/types/product";
+
 import { useRouter } from "next/router";
 import styles from "./ProductRegistration.module.css";
 import { useEffect, useState } from "react";
 import { createProduct, uploadProductImage } from "@/api/productsApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+type SelectedImage = {
+  file: File;
+  previewUrl: string;
+};
+
 export default function ProductRegistrationPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [accessToken, setAccessToken] = useState(null);
-  const [selectedImages, setSelectedImages] = useState([]);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [imageError, setImageError] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagError, setTagError] = useState("");
   const [submitError, setSubmitError] = useState("");
 
@@ -35,14 +49,14 @@ export default function ProductRegistrationPage() {
     setAccessToken(savedAccessToken);
   }, [router]);
 
-  const createProductMutation = useMutation({
+  const createProductMutation = useMutation<Product, ApiError, void>({
     mutationFn: async () => {
-      const imageUrls = [];
+      const imageUrls: string[] = [];
 
       for (const selectedImage of selectedImages) {
         const imageUrl = await uploadProductImage(
           selectedImage.file,
-          accessToken,
+          accessToken!,
         );
 
         imageUrls.push(imageUrl);
@@ -56,7 +70,7 @@ export default function ProductRegistrationPage() {
         name: name.trim(),
       };
 
-      return createProduct(productData, accessToken);
+      return createProduct(productData, accessToken!);
     },
 
     onSuccess: (createdProduct) => {
@@ -94,15 +108,15 @@ export default function ProductRegistrationPage() {
     !Number.isInteger(Number(price)) ||
     tags.length === 0;
 
-  function handleImageButtonClick(event) {
+  function handleImageButtonClick(event: MouseEvent<HTMLLabelElement>) {
     if (selectedImages.length >= MAX_IMAGE_COUNT) {
       event.preventDefault();
       setImageError("이미지는 최대 3개까지 등록할 수 있습니다.");
     }
   }
 
-  function handleImageChange(event) {
-    const selectedFiles = Array.from(event.target.files);
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(event.currentTarget.files ?? []);
     const availableImageCount = MAX_IMAGE_COUNT - selectedImages.length;
 
     const invalidTypeFile = selectedFiles.find(
@@ -111,7 +125,7 @@ export default function ProductRegistrationPage() {
 
     if (invalidTypeFile) {
       setImageError("JPG, JPEG, PNG, Webp 이미지만 등록할 수 있습니다.");
-      event.target.value = "";
+      event.currentTarget.value = "";
       return;
     }
 
@@ -121,7 +135,7 @@ export default function ProductRegistrationPage() {
 
     if (oversizedFile) {
       setImageError("이미지는 한 장당 최대 5MB까지 등록할 수 있습니다.");
-      event.target.value = "";
+      event.currentTarget.value = "";
       return;
     }
 
@@ -140,10 +154,10 @@ export default function ProductRegistrationPage() {
       setImageError("");
     }
 
-    event.target.value = "";
+    event.currentTarget.value = "";
   }
 
-  function handleRemoveImage(removePreviewUrl) {
+  function handleRemoveImage(removePreviewUrl: string) {
     const removedImage = selectedImages.find(
       (image) => image.previewUrl === removePreviewUrl,
     );
@@ -158,15 +172,15 @@ export default function ProductRegistrationPage() {
     setImageError("");
   }
 
-  function handlePriceChange(event) {
-    const onlyNumbers = event.target.value.replace(/[^0-9]/g, "");
+  function handlePriceChange(event: ChangeEvent<HTMLInputElement>) {
+    const onlyNumbers = event.currentTarget.value.replace(/[^0-9]/g, "");
 
     if (onlyNumbers === "" || Number(onlyNumbers) <= 2147483647) {
       setPrice(onlyNumbers);
     }
   }
 
-  function handleTagKeyDown(event) {
+  function handleTagKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.nativeEvent.isComposing) {
       return;
     }
@@ -198,13 +212,13 @@ export default function ProductRegistrationPage() {
     setTagError("");
   }
 
-  function handleRemoveTag(removeTag) {
+  function handleRemoveTag(removeTag: string) {
     setTags((currentTags) => currentTags.filter((tag) => tag !== removeTag));
 
     setTagError("");
   }
 
-  function handleSubmit(event) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (isSubmitDisabled || createProductMutation.isPending) {
@@ -285,7 +299,7 @@ export default function ProductRegistrationPage() {
             value={name}
             maxLength={30}
             placeholder="상품명을 입력해주세요."
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => setName(event.currentTarget.value)}
           />
         </div>
 
@@ -296,7 +310,7 @@ export default function ProductRegistrationPage() {
             id="product-description"
             value={description}
             placeholder="상품 소개를 입력해주세요"
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={(event) => setDescription(event.currentTarget.value)}
           />
         </div>
 
