@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import type { SubmitEvent } from "react";
 import styles from "./Signin.module.css";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import { signUp } from "@/api/authApi";
+
+type SignupModalType = "" | "success" | "emailInUse";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -21,7 +24,7 @@ export default function SignupPage() {
   const [passwordConfirmationError, setPasswordConfirmationError] =
     useState("");
 
-  const [signupModalType, setSignupModalType] = useState("");
+  const [signupModalType, setSignupModalType] = useState<SignupModalType>("");
 
   const signupModalMessage =
     signupModalType === "success"
@@ -64,7 +67,7 @@ export default function SignupPage() {
     passwordConfirmation.trim() !== "" &&
     isPasswordConfirmationValid;
 
-  function handleSubmit(event) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!isFormValid || signupMutation.isPending) {

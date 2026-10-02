@@ -1,6 +1,7 @@
 import Link from "next/link";
 import styles from "./Signin.module.css";
 import { useState, useEffect } from "react";
+import type { SubmitEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { signIn } from "../api/authApi";
 import { useRouter } from "next/router";
@@ -44,7 +45,7 @@ export default function SigninPage() {
 
   const isFormValid = isEmailValid && isPasswordValid;
 
-  function handleSubmit(event) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (email.trim() === "") {

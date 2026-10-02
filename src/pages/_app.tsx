@@ -4,11 +4,12 @@ import { useRouter } from "next/router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import type { AppProps } from "next/app";
 import "@/styles/globals.css";
 
 const AUTH_PATHS = ["/signin", "/signup"];
 
-export default function App({ Component, pageProps }) {
+export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const [queryClient] = useState(() => new QueryClient());
   const isAuthPage = AUTH_PATHS.includes(router.pathname);
